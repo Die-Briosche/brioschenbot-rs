@@ -2,6 +2,7 @@ use telegram_bot::{Api, MessageText, CanReplySendMessage, MessageKind, CanSendMe
 use mysql::PooledConn;
 use mysql::prelude::Queryable;
 use crate::reply::{Comparator, Reply, ReplyType};
+use ts3_query::{QueryClient, MessageTarget};
 
 
 pub async fn handle_replies(api: &Api, mut db_conn: PooledConn, message: &Message) -> bool {
@@ -33,7 +34,6 @@ pub async fn handle_replies(api: &Api, mut db_conn: PooledConn, message: &Messag
         }).expect("Can't fetch replies from database");
 
         for reply in replies {
-            println!("Testing {} vs {}", reply.trigger, data);
             let data = if reply.ignore_case { data.to_lowercase() } else { data.clone() };
             let should_reply = match reply.comparator {
                 Comparator::Equals => data.eq(&reply.trigger),

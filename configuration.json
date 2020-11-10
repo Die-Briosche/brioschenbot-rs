@@ -3,5 +3,13 @@
     "database_ip": "",
     "database_name": "brioschenbot",
     "database_user": "",
-    "database_password": ""
+    "database_password": "",
+    "tg_log_chatid": "",
+
+    "ts_ip": "",
+    "ts_query_port": "10011",
+    "ts_server_port": 9987,
+    "ts_user": "",
+    "ts_password": ""
+
 }
