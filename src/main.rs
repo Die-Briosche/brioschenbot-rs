@@ -1,5 +1,6 @@
 mod tg_helper;
 mod reply;
+mod db_helper;
 
 use std::{fs, thread};
 
@@ -12,6 +13,7 @@ use std::sync::mpsc;
 use std::time::{Instant, Duration};
 use std::sync::mpsc::{Sender, Receiver};
 use std::convert::TryFrom;
+use crate::db_helper::get_alias_from_telegram_id;
 
 fn load_configuration(path: &str) -> (String, String, String, String, String, String, String, String, u16, String, String) {
     let raw_conf = fs::read_to_string(path).expect("Could not read configuration file!");
@@ -51,16 +53,16 @@ async fn main() -> Result<(), Error> {
         loop {
             let recv = ts_receiver.try_recv();
             if recv.is_err() {
-                if last_msg.elapsed().as_secs() > 240 {
-                    client.ping();
+                if last_msg.elapsed().as_secs() > 240 {     // We will be disconnected from the server if we don't do anything for 5 minutes
+                    let _ = client.ping();                  // So we ping it roughly every 4 minutes
                     last_msg = Instant::now();
                     continue;
                 }
-                thread::sleep(Duration::from_millis(50));
+                thread::sleep(Duration::from_millis(100));
             } else {
                 let recv = recv.unwrap();
-                client.rename(recv.0);
-                client.send_message(MessageTarget::Server, recv.1);
+                let _ = client.rename(recv.0);
+                let _ = client.send_message(MessageTarget::Server, recv.1);
             }
         }
     });
@@ -72,7 +74,21 @@ async fn main() -> Result<(), Error> {
             if let MessageKind::Text { ref data, .. } = message.kind {
                 println!("{} {} in {}: {}", message.clone().from.first_name, message.clone().from.last_name.unwrap_or("".to_string()), message.clone().chat.id(), data);
                 if message.chat.id().to_string().eq(&tg_log_chatid) {
-                    ts_sender.send((message.clone().from.username.unwrap_or("Unknown".to_string()), data.to_string()));
+                    let mut users_name =
+                        get_alias_from_telegram_id(
+                            db_pool.get_conn().unwrap(),
+                            &message.clone().from.id.to_string(),
+                            Some(
+                                (
+                                    message.clone().from.first_name,
+                                    message.clone().from.last_name.unwrap_or("".to_string()),
+                                    message.clone().from.username.unwrap_or("".to_string())
+                                )
+                            )
+                        );
+                    users_name = if users_name.eq(&"".to_string()) { format!("{} {}", message.clone().from.first_name, message.clone().from.last_name.unwrap_or("".to_string())) } else { users_name};
+                    let _ = ts_sender.send((users_name, data.to_string()));
+                    let _ = api.send(message.delete()).await;
                 }
             }
 

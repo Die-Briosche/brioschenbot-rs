@@ -1,8 +1,7 @@
-use telegram_bot::{Api, MessageText, CanReplySendMessage, MessageKind, CanSendMessage, Message};
+use telegram_bot::{Api, CanReplySendMessage, MessageKind, CanSendMessage, Message};
 use mysql::PooledConn;
 use mysql::prelude::Queryable;
 use crate::reply::{Comparator, Reply, ReplyType};
-use ts3_query::{QueryClient, MessageTarget};
 
 
 pub async fn handle_replies(api: &Api, mut db_conn: PooledConn, message: &Message) -> bool {
