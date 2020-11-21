@@ -106,7 +106,6 @@ pub async fn handle_commands(api: &Api, mut _db_conn: PooledConn, ts_sender: Sen
                     return true;
                 }
             }
-
             let _ = api.send(message.chat.text("Couldn't get webcam image"));
         } else if Regex::new(r"/weser").unwrap().is_match(data) {
             if let Ok(response) = reqwest::get("http://webcam2.hameln.de/CGIProxy.fcgi?cmd=snapPicture2&usr=WebCam&pwd=Hameln2017").await {
@@ -116,7 +115,6 @@ pub async fn handle_commands(api: &Api, mut _db_conn: PooledConn, ts_sender: Sen
                     return true;
                 }
             }
-
             let _ = api.send(message.chat.text("Couldn't get webcam image"));
         } else if Regex::new(r"/kluet").unwrap().is_match(data) || Regex::new(r"/klüt").unwrap().is_match(data) {
             if let Ok(response) = reqwest::get("http://webcam3.hameln.de:8080/cgi-bin/api.cgi?cmd=Snap&channel=0&rs=wuuPhkmUCeI9WG7C&user=web&password=hameln").await {
@@ -126,8 +124,15 @@ pub async fn handle_commands(api: &Api, mut _db_conn: PooledConn, ts_sender: Sen
                     return true;
                 }
             }
-
             let _ = api.send(message.chat.text("Couldn't get webcam image"));
+        } else if Regex::new(r"/rand (\d*)").unwrap().is_match(data) {
+            let re = Regex::new(r"/rand (\d*)").unwrap();
+            if let Some(max) = re.captures(data).unwrap().get(1) {
+                let maximum = max.as_str().parse().unwrap_or(1000);
+                let a = api.send(message.text_reply(format!("{}", rand::random::<u32>() % maximum))).await;
+                return true;
+
+            }
         }
     }
 
