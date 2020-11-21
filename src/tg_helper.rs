@@ -49,16 +49,16 @@ pub async fn handle_replies(api: &Api, mut db_conn: PooledConn, message: &Messag
                 match reply.reply_type {
                     ReplyType::Text  => {
                         if reply.reply_flag {
-                            api.send(message.text_reply(reply.reply)).await.unwrap();
+                            let _ = api.send(message.text_reply(reply.reply)).await;
                         } else {
-                            api.send(message.chat.text(reply.reply)).await.unwrap();
+                            let _ = api.send(message.chat.text(reply.reply)).await;
                         }
                     }
                     ReplyType::GifRandom => {
                         if reply.reply_flag {
-                            api.send(message.document_reply(InputFileRef::new(reply.reply))).await.unwrap();
+                            let _ = api.send(message.document_reply(InputFileRef::new(reply.reply))).await;
                         } else {
-                            api.send(message.chat.document(InputFileRef::new(reply.reply))).await.unwrap();
+                            let _ = api.send(message.chat.document(InputFileRef::new(reply.reply))).await;
                         }
                     },
                     ReplyType::Undefined => ()
