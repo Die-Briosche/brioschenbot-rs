@@ -1,11 +1,12 @@
 use std::time::{Instant, Duration};
 use std::thread;
 use ts3_query::{MessageTarget, QueryClient};
-use std::sync::mpsc::Receiver;
+use std::sync::mpsc::{Receiver, Sender};
 
 pub enum TSCommand {
     ServerMessageSend(String, String),
     ServerPokeAll(String, String),
+    ServerUsersOnline(Sender<String>),
     UserKick(String, String, String),
     UserChannelKick(String, String, String),
     UserPoke(String, String, String),
@@ -24,54 +25,71 @@ pub fn start_ts_handler(mut client: QueryClient, ts_receiver: Receiver<TSCommand
             }
             thread::sleep(Duration::from_millis(100));
         } else {
-            let msg = recv.unwrap();
-            if let TSCommand::ServerMessageSend(username, message) = msg {
-                let _ = client.rename(username);
-                let _ = client.send_message(MessageTarget::Server, message);
-                let _ = client.rename("BrioschenBot");
-            } else if let TSCommand::ServerPokeAll(username, message) = msg {
-                let _ = client.rename(username);
+            //let msg = recv.unwrap();
+            match recv.unwrap() {
+                TSCommand::ServerMessageSend(username, message) => {
+                    let _ = client.rename(username);
+                    let _ = client.send_message(MessageTarget::Server, message);
+                    let _ = client.rename("BrioschenBot");
+                },
+                TSCommand::ServerPokeAll(username, message) => {
+                    let _ = client.rename(username);
 
-                let online_clients = client.online_clients().unwrap();
-                for ts_user in online_clients {
-                    let _ = client.poke_client(ts_user.clid, message.clone());
-                }
-
-                let _ = client.rename("BrioschenBot");
-            } else if let TSCommand::UserPoke(target_username, username, message) = msg {
-                let _ = client.rename(username);
-
-                let online_clients = client.online_clients().unwrap();
-                for ts_user in online_clients {
-                    if ts_user.client_nickname.eq(&target_username.clone()) {
+                    let online_clients = client.online_clients().unwrap();
+                    for ts_user in online_clients {
                         let _ = client.poke_client(ts_user.clid, message.clone());
                     }
-                }
 
-                let _ = client.rename("BrioschenBot");
-            } else if let TSCommand::UserKick(target_username, username, message) = msg {
-                let _ = client.rename(username);
+                    let _ = client.rename("BrioschenBot");
+                },
+                TSCommand::ServerUsersOnline(answer_sender) => {
+                    let mut users_string = String::from("Currently online:\n\n");
 
-                let online_clients = client.online_clients().unwrap();
-                for ts_user in online_clients {
-                    println!("{} - {}", target_username, ts_user.client_nickname);
-                    if target_username.eq(&ts_user.client_nickname) {
-                        let _ = client.kick_client(ts_user.clid, true, Some(&message.clone()));
+                    let online_clients = client.online_clients().unwrap();
+                    for ts_user in online_clients {
+                        if ts_user.client_type != 1 {
+                            users_string += &*format!("{}\n", ts_user.client_nickname).to_string();
+                        }
                     }
-                }
+                    let _ = answer_sender.send(users_string);
+                },
+                TSCommand::UserPoke(target_username, username, message) => {
+                    let _ = client.rename(username);
 
-                let _ = client.rename("BrioschenBot");
-            } else if let TSCommand::UserChannelKick(target_username, username, message) = msg {
-                let _ = client.rename(username);
-
-                let online_clients = client.online_clients().unwrap();
-                for ts_user in online_clients {
-                    if ts_user.client_nickname.eq(&target_username.clone()) {
-                        let _ = client.kick_client(ts_user.clid, false, Some(&message.clone()));
+                    let online_clients = client.online_clients().unwrap();
+                    for ts_user in online_clients {
+                        if ts_user.client_nickname.eq(&target_username.clone()) {
+                            let _ = client.poke_client(ts_user.clid, message.clone());
+                        }
                     }
-                }
 
-                let _ = client.rename("BrioschenBot");
+                    let _ = client.rename("BrioschenBot");
+                },
+                TSCommand::UserKick(target_username, username, message) => {
+                    let _ = client.rename(username);
+
+                    let online_clients = client.online_clients().unwrap();
+                    for ts_user in online_clients {
+                        println!("{} - {}", target_username, ts_user.client_nickname);
+                        if target_username.eq(&ts_user.client_nickname) {
+                            let _ = client.kick_client(ts_user.clid, true, Some(&message.clone()));
+                        }
+                    }
+
+                    let _ = client.rename("BrioschenBot");
+                },
+                TSCommand::UserChannelKick(target_username, username, message) => {
+                    let _ = client.rename(username);
+
+                    let online_clients = client.online_clients().unwrap();
+                    for ts_user in online_clients {
+                        if ts_user.client_nickname.eq(&target_username.clone()) {
+                            let _ = client.kick_client(ts_user.clid, false, Some(&message.clone()));
+                        }
+                    }
+
+                    let _ = client.rename("BrioschenBot");
+                }
             }
 
 

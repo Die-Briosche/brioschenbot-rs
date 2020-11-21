@@ -2,9 +2,10 @@ use telegram_bot::{Api, CanReplySendMessage, MessageKind, CanSendMessage, Messag
 use mysql::PooledConn;
 use mysql::prelude::Queryable;
 use crate::reply::{Comparator, Reply, ReplyType};
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{Sender, Receiver};
 use crate::ts_helper::TSCommand;
 use regex::Regex;
+use std::sync::mpsc;
 
 
 pub async fn handle_replies(api: &Api, mut db_conn: PooledConn, message: &Message) -> bool {
@@ -129,10 +130,21 @@ pub async fn handle_commands(api: &Api, mut _db_conn: PooledConn, ts_sender: Sen
             let re = Regex::new(r"/rand (\d*)").unwrap();
             if let Some(max) = re.captures(data).unwrap().get(1) {
                 let maximum = max.as_str().parse().unwrap_or(1000);
-                let a = api.send(message.text_reply(format!("{}", rand::random::<u32>() % maximum))).await;
+                let _ = api.send(message.text_reply(format!("{}", rand::random::<u32>() % maximum))).await;
                 return true;
-
             }
+        } else if Regex::new(r"/whothere").unwrap().is_match(data) {
+            let (answer_sender, answer_receiver) : (Sender<String>, Receiver<String>) = mpsc::channel();
+
+            if ts_sender.send(TSCommand::ServerUsersOnline(answer_sender)).is_ok() {
+                let answer = answer_receiver.recv();
+                if answer.is_ok() {
+                    let _ = api.send(message.chat.text(answer.unwrap())).await;
+                    return true;
+                }
+            }
+
+
         }
     }
 
