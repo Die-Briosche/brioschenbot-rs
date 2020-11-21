@@ -1,4 +1,4 @@
-use telegram_bot::{Api, CanReplySendMessage, MessageKind, CanSendMessage, Message, InputFileUpload, CanSendPhoto};
+use telegram_bot::{Api, CanReplySendMessage, MessageKind, CanSendMessage, Message, InputFileUpload, CanSendPhoto, CanSendDocument, CanReplySendDocument, InputFileRef};
 use mysql::PooledConn;
 use mysql::prelude::Queryable;
 use crate::reply::{Comparator, Reply, ReplyType};
@@ -10,7 +10,8 @@ use regex::Regex;
 pub async fn handle_replies(api: &Api, mut db_conn: PooledConn, message: &Message) -> bool {
     if let MessageKind::Text { ref data, .. } = message.kind {
 
-        let replies = db_conn.query_map("SELECT replies.trigger, comparator, ignore_case, reply, reply_type, reply_flag FROM replies", |(trigger, comparator, ignore_case, reply, reply_type, reply_flag): (String, i8, i8, String, i8, i8)| {
+        // The "ORDER BY rand()" is actually only needed for the random gifs. Should be replaced with a cleaner version that isn't as costly for big rables!
+        let replies = db_conn.query_map("SELECT replies.trigger, comparator, ignore_case, reply, reply_type, reply_flag FROM replies ORDER BY rand()", |(trigger, comparator, ignore_case, reply, reply_type, reply_flag): (String, i8, i8, String, i8, i8)| {
             let comparator = match comparator {
                 0 => Comparator::Contains,
                 1 => Comparator::Equals,
@@ -19,6 +20,7 @@ pub async fn handle_replies(api: &Api, mut db_conn: PooledConn, message: &Messag
 
             let reply_type = match reply_type {
                 0 => ReplyType::Text,
+                3 => ReplyType::GifRandom,
                 _ => ReplyType::Undefined
             };
 
@@ -44,14 +46,23 @@ pub async fn handle_replies(api: &Api, mut db_conn: PooledConn, message: &Messag
             };
 
             if should_reply {
-                if let ReplyType::Text = reply.reply_type {
-                    if reply.reply_flag {
-                        api.send(message.text_reply(reply.reply)).await.unwrap();
-                    } else {
-                        api.send(message.chat.text(reply.reply)).await.unwrap();
+                match reply.reply_type {
+                    ReplyType::Text  => {
+                        if reply.reply_flag {
+                            api.send(message.text_reply(reply.reply)).await.unwrap();
+                        } else {
+                            api.send(message.chat.text(reply.reply)).await.unwrap();
+                        }
                     }
+                    ReplyType::GifRandom => {
+                        if reply.reply_flag {
+                            api.send(message.document_reply(InputFileRef::new(reply.reply))).await.unwrap();
+                        } else {
+                            api.send(message.chat.document(InputFileRef::new(reply.reply))).await.unwrap();
+                        }
+                    },
+                    ReplyType::Undefined => ()
                 }
-
                 return true;
             }
         }

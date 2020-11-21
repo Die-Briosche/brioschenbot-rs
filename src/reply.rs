@@ -7,6 +7,7 @@ pub enum Comparator {
 
 pub enum ReplyType {
     Text,
+    GifRandom,
     Undefined,
 }
 
