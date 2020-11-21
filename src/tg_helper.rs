@@ -1,4 +1,4 @@
-use telegram_bot::{Api, CanReplySendMessage, MessageKind, CanSendMessage, Message};
+use telegram_bot::{Api, CanReplySendMessage, MessageKind, CanSendMessage, Message, InputFileUpload, CanSendPhoto};
 use mysql::PooledConn;
 use mysql::prelude::Queryable;
 use crate::reply::{Comparator, Reply, ReplyType};
@@ -60,33 +60,63 @@ pub async fn handle_replies(api: &Api, mut db_conn: PooledConn, message: &Messag
     false
 }
 
-pub async fn handle_commands(_api: &Api, mut _db_conn: PooledConn, ts_sender: Sender<TSCommand>, message: &Message) -> bool {
+pub async fn handle_commands(api: &Api, mut _db_conn: PooledConn, ts_sender: Sender<TSCommand>, message: &Message) -> bool {
 
     if let MessageKind::Text { ref data, .. } = message.kind {
         if Regex::new(r"/kick [\w ]*").unwrap().is_match(data) {
             let re = Regex::new(r"/kick ([\w ]*)").unwrap();
             if let Some(target) = re.captures(data).unwrap().get(1) {
                 let _ = ts_sender.send(TSCommand::UserKick(target.as_str().to_string(), "BrioschenBot".to_string(), String::new()));            // TODO Add ability to kick with message
+                return true;
             }
-            return true;
         } else if Regex::new(r"/softkick [\w ]*").unwrap().is_match(data) {
             let re = Regex::new(r"/softkick ([\w ]*)").unwrap();
             if let Some(target) = re.captures(data).unwrap().get(1) {
                 let _ = ts_sender.send(TSCommand::UserChannelKick(target.as_str().to_string(), "BrioschenBot".to_string(), String::new()));     // TODO Add ability to kick with message
+                return true;
             }
-            return true;
         } else if Regex::new(r"/poke [\w ]*").unwrap().is_match(data) {
             let re = Regex::new(r"/poke ([\w ]*)").unwrap();
             if let Some(target) = re.captures(data).unwrap().get(1) {
                 let _ = ts_sender.send(TSCommand::UserPoke(target.as_str().to_string(), "BrioschenBot".to_string(), String::new()));            // TODO Add ability to poke with message
+                return true;
             }
-            return true;
         } else if Regex::new(r"/pokeall [\w ]*").unwrap().is_match(data) {
             let re = Regex::new(r"/pokeall ([\w ]*)").unwrap();
             if let Some(msg) = re.captures(data).unwrap().get(1) {
                 let _ = ts_sender.send(TSCommand::ServerPokeAll("BrioschenBot".to_string(), msg.as_str().to_string()));
+                return true;
             }
-            return true;
+        } else if Regex::new(r"/hameln").unwrap().is_match(data) {
+            if let Ok(response) = reqwest::get("http://webcam.hameln.de/CGIProxy.fcgi?cmd=snapPicture2&usr=WebCam&pwd=Hameln2017").await {
+                if let Ok(data) = response.bytes().await {
+                    let file = InputFileUpload::with_data(data, "hameln.jpg");
+                    let _ = api.send(message.chat.photo(&file)).await;
+                    return true;
+                }
+            }
+
+            let _ = api.send(message.chat.text("Couldn't get webcam image"));
+        } else if Regex::new(r"/weser").unwrap().is_match(data) {
+            if let Ok(response) = reqwest::get("http://webcam2.hameln.de/CGIProxy.fcgi?cmd=snapPicture2&usr=WebCam&pwd=Hameln2017").await {
+                if let Ok(data) = response.bytes().await {
+                    let file = InputFileUpload::with_data(data, "weser.jpg");
+                    let _ = api.send(message.chat.photo(&file)).await;
+                    return true;
+                }
+            }
+
+            let _ = api.send(message.chat.text("Couldn't get webcam image"));
+        } else if Regex::new(r"/kluet").unwrap().is_match(data) || Regex::new(r"/klüt").unwrap().is_match(data) {
+            if let Ok(response) = reqwest::get("http://webcam3.hameln.de:8080/cgi-bin/api.cgi?cmd=Snap&channel=0&rs=wuuPhkmUCeI9WG7C&user=web&password=hameln").await {
+                if let Ok(data) = response.bytes().await {
+                    let file = InputFileUpload::with_data(data, "kluet.jpg");
+                    let _ = api.send(message.chat.photo(&file)).await;
+                    return true;
+                }
+            }
+
+            let _ = api.send(message.chat.text("Couldn't get webcam image"));
         }
     }
 
