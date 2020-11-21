@@ -16,7 +16,7 @@ use std::convert::TryFrom;
 use crate::db_helper::get_alias_from_telegram_id;
 use crate::ts_helper::{start_ts_handler, TSCommand};
 
-fn load_configuration(path: &str) -> (String, String, String, String, String, String, String, String, u16, String, String) {
+pub fn load_configuration(path: &str) -> (String, String, String, String, String, String, String, String, u16, String, String, String) {
     let raw_conf = fs::read_to_string(path).expect("Could not read configuration file!");
     let conf: serde_json::Value = serde_json::from_str(&raw_conf).expect("Configuration file is malformed");
 
@@ -33,12 +33,14 @@ fn load_configuration(path: &str) -> (String, String, String, String, String, St
     let ts_user = conf["ts_user"].as_str().expect("Configuration file does not contain ts_user!").to_string();
     let ts_password = conf["ts_password"].as_str().expect("Configuration file does not contain ts_password!").to_string();
 
-    return (bot_token, database_name, database_ip, database_user, database_password, tg_log_chatid, ts_ip, ts_query_port, ts_server_port, ts_user, ts_password);
+    let surprise_target = conf["surprise_target"].as_str().expect("Configuration file does not contain surprise_target").to_string();
+
+    return (bot_token, database_name, database_ip, database_user, database_password, tg_log_chatid, ts_ip, ts_query_port, ts_server_port, ts_user, ts_password, surprise_target);
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let (bot_token, database_name, database_ip, database_user, database_password, tg_log_chatid, ts_ip, ts_query_port, ts_server_port, ts_user, ts_password) = load_configuration("configuration.json");
+    let (bot_token, database_name, database_ip, database_user, database_password, tg_log_chatid, ts_ip, ts_query_port, ts_server_port, ts_user, ts_password, surprise_target) = load_configuration("configuration.json");
     let api = Api::new(bot_token);
 
     let db_pool = Pool::new(format!("mysql://{}:{}@{}/{}", database_user, database_password, database_ip, database_name)).expect("Database connection can't be established!");
@@ -50,7 +52,7 @@ async fn main() -> Result<(), Error> {
         client.login(ts_user, ts_password).unwrap();
         client.select_server_by_port(ts_server_port).unwrap();
 
-        start_ts_handler(client, ts_receiver);
+        start_ts_handler(client, ts_receiver, surprise_target);
     });
 
     let mut stream = api.stream();

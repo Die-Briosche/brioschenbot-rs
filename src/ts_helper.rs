@@ -10,10 +10,10 @@ pub enum TSCommand {
     UserKick(String, String, String),
     UserChannelKick(String, String, String),
     UserPoke(String, String, String),
-
+    Surprise(Sender<String>),
 }
 
-pub fn start_ts_handler(mut client: QueryClient, ts_receiver: Receiver<TSCommand>) {    // TODO Find a way to communicate back
+pub fn start_ts_handler(mut client: QueryClient, ts_receiver: Receiver<TSCommand>, surprise_target: String) {
     let mut last_msg = Instant::now();
     loop {
         let recv = ts_receiver.try_recv();
@@ -89,6 +89,17 @@ pub fn start_ts_handler(mut client: QueryClient, ts_receiver: Receiver<TSCommand
                     }
 
                     let _ = client.rename("BrioschenBot");
+                },
+                TSCommand::Surprise(answer_sender) => {
+                    let online_clients = client.online_clients_full();
+                    if online_clients.is_ok() {
+                        for ts_user in online_clients.unwrap() {
+                            if ts_user.client_unique_identifier.eq(&surprise_target.clone()) {
+                                let _ = client.kick_client(ts_user.clid, false, Some("Surprise!"));
+                                let _ = answer_sender.send("Surprisingly silent!".to_string());
+                            }
+                        }
+                    }
                 }
             }
 

@@ -143,8 +143,16 @@ pub async fn handle_commands(api: &Api, mut _db_conn: PooledConn, ts_sender: Sen
                     return true;
                 }
             }
+        } else if Regex::new(r"/surprise").unwrap().is_match(data) {
+            let (answer_sender, answer_receiver) : (Sender<String>, Receiver<String>) = mpsc::channel();
 
-
+            if ts_sender.send(TSCommand::Surprise(answer_sender)).is_ok() {
+                let answer = answer_receiver.recv();
+                if answer.is_ok() {
+                    let _ = api.send(message.chat.text(answer.unwrap())).await;
+                    return true;
+                }
+            }
         }
     }
 
