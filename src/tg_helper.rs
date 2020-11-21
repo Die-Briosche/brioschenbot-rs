@@ -2,6 +2,9 @@ use telegram_bot::{Api, CanReplySendMessage, MessageKind, CanSendMessage, Messag
 use mysql::PooledConn;
 use mysql::prelude::Queryable;
 use crate::reply::{Comparator, Reply, ReplyType};
+use std::sync::mpsc::Sender;
+use crate::ts_helper::TSCommand;
+use regex::Regex;
 
 
 pub async fn handle_replies(api: &Api, mut db_conn: PooledConn, message: &Message) -> bool {
@@ -51,6 +54,39 @@ pub async fn handle_replies(api: &Api, mut db_conn: PooledConn, message: &Messag
 
                 return true;
             }
+        }
+    }
+
+    false
+}
+
+pub async fn handle_commands(_api: &Api, mut _db_conn: PooledConn, ts_sender: Sender<TSCommand>, message: &Message) -> bool {
+
+    if let MessageKind::Text { ref data, .. } = message.kind {
+        if Regex::new(r"/kick [\w ]*").unwrap().is_match(data) {
+            let re = Regex::new(r"/kick ([\w ]*)").unwrap();
+            if let Some(target) = re.captures(data).unwrap().get(1) {
+                let _ = ts_sender.send(TSCommand::UserKick(target.as_str().to_string(), "BrioschenBot".to_string(), String::new()));            // TODO Add ability to kick with message
+            }
+            return true;
+        } else if Regex::new(r"/softkick [\w ]*").unwrap().is_match(data) {
+            let re = Regex::new(r"/softkick ([\w ]*)").unwrap();
+            if let Some(target) = re.captures(data).unwrap().get(1) {
+                let _ = ts_sender.send(TSCommand::UserChannelKick(target.as_str().to_string(), "BrioschenBot".to_string(), String::new()));     // TODO Add ability to kick with message
+            }
+            return true;
+        } else if Regex::new(r"/poke [\w ]*").unwrap().is_match(data) {
+            let re = Regex::new(r"/poke ([\w ]*)").unwrap();
+            if let Some(target) = re.captures(data).unwrap().get(1) {
+                let _ = ts_sender.send(TSCommand::UserPoke(target.as_str().to_string(), "BrioschenBot".to_string(), String::new()));            // TODO Add ability to poke with message
+            }
+            return true;
+        } else if Regex::new(r"/pokeall [\w ]*").unwrap().is_match(data) {
+            let re = Regex::new(r"/pokeall ([\w ]*)").unwrap();
+            if let Some(msg) = re.captures(data).unwrap().get(1) {
+                let _ = ts_sender.send(TSCommand::ServerPokeAll("BrioschenBot".to_string(), msg.as_str().to_string()));
+            }
+            return true;
         }
     }
 

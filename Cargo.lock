@@ -96,6 +96,7 @@ version = "0.1.0"
 dependencies = [
  "futures",
  "mysql",
+ "regex",
  "serde_json",
  "telegram-bot",
  "tokio",
