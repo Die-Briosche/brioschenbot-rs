@@ -2,6 +2,9 @@ use std::time::{Instant, Duration};
 use std::thread;
 use ts3_query::{MessageTarget, QueryClient};
 use std::sync::mpsc::{Receiver, Sender};
+use crate::db_helper::get_tsname_from_userid;
+use mysql::PooledConn;
+use std::borrow::BorrowMut;
 
 pub enum TSCommand {
     ServerMessageSend(String, String),
@@ -13,7 +16,7 @@ pub enum TSCommand {
     Surprise(Sender<String>),
 }
 
-pub fn start_ts_handler(mut client: QueryClient, ts_receiver: Receiver<TSCommand>, surprise_target: String) {
+pub fn start_ts_handler(mut client: QueryClient, mut db_conn: PooledConn, ts_receiver: Receiver<TSCommand>, surprise_target: String) {
     let mut last_msg = Instant::now();
     loop {
         let recv = ts_receiver.try_recv();
@@ -91,11 +94,14 @@ pub fn start_ts_handler(mut client: QueryClient, ts_receiver: Receiver<TSCommand
                     let _ = client.rename("BrioschenBot");
                 },
                 TSCommand::Surprise(answer_sender) => {
-                    let online_clients = client.online_clients_full();
+                    let online_clients = client.online_clients();   // TODO use online_clients_full() once it doesn't regularly fail anymore
+                    let tsname = get_tsname_from_userid(db_conn.borrow_mut(), &surprise_target.clone());
+
                     if online_clients.is_ok() {
                         for ts_user in online_clients.unwrap() {
-                            if ts_user.client_unique_identifier.eq(&surprise_target.clone()) {
-                                let _ = client.kick_client(ts_user.clid, false, Some("Surprise!"));
+
+                            if ts_user.client_nickname.eq(&tsname) {
+                                let _ = client.kick_client(ts_user.clid, true, Some("Surprise!"));
                                 let _ = answer_sender.send("Surprisingly silent!".to_string());
                             }
                         }

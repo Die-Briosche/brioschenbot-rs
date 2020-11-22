@@ -22,3 +22,15 @@ pub fn get_alias_from_telegram_id(mut db_conn: PooledConn, t_id: &String, name: 
         "".to_string()
     }
 }
+
+pub fn get_tsname_from_userid(db_conn: &mut PooledConn, id: &String) -> String {
+    let tsnames = db_conn.query_map(format!("SELECT ts_name FROM users WHERE id = {}", id), |tsname: String| {        // Usually you wouldn't use format! for your query for SQL injection reasons
+                                                                                                                                        // id isn't something a user could supply, so it should be fine here
+        tsname
+    }).expect("Can't fetch users from database");
+
+    if tsnames.len() != 0 {
+        return tsnames[0].to_string();
+    }
+    String::new()
+}

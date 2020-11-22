@@ -44,6 +44,7 @@ async fn main() -> Result<(), Error> {
     let api = Api::new(bot_token);
 
     let db_pool = Pool::new(format!("mysql://{}:{}@{}/{}", database_user, database_password, database_ip, database_name)).expect("Database connection can't be established!");
+    let ts_db_conn = db_pool.get_conn().unwrap();
 
     let (ts_sender, ts_receiver) : (Sender<TSCommand>, Receiver<TSCommand>) = mpsc::channel();
 
@@ -52,7 +53,7 @@ async fn main() -> Result<(), Error> {
         client.login(ts_user, ts_password).unwrap();
         client.select_server_by_port(ts_server_port).unwrap();
 
-        start_ts_handler(client, ts_receiver, surprise_target);
+        start_ts_handler(client,  ts_db_conn, ts_receiver, surprise_target);
     });
 
     let mut stream = api.stream();
