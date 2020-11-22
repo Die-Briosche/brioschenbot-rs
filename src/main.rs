@@ -16,7 +16,7 @@ use std::convert::TryFrom;
 use crate::db_helper::get_alias_from_telegram_id;
 use crate::ts_helper::{start_ts_handler, TSCommand};
 
-pub fn load_configuration(path: &str) -> (String, String, String, String, String, String, String, String, u16, String, String, String) {
+pub fn load_configuration(path: &str) -> (String, String, String, String, String, String, String, String, u16, String, String, String, String) {
     let raw_conf = fs::read_to_string(path).expect("Could not read configuration file!");
     let conf: serde_json::Value = serde_json::from_str(&raw_conf).expect("Configuration file is malformed");
 
@@ -34,13 +34,14 @@ pub fn load_configuration(path: &str) -> (String, String, String, String, String
     let ts_password = conf["ts_password"].as_str().expect("Configuration file does not contain ts_password!").to_string();
 
     let surprise_target = conf["surprise_target"].as_str().expect("Configuration file does not contain surprise_target").to_string();
+    let log_randomnum_exception = conf["log_randomnum_exception"].as_str().expect("Configuration file does not contain log_randomnum_exception").to_string();
 
-    return (bot_token, database_name, database_ip, database_user, database_password, tg_log_chatid, ts_ip, ts_query_port, ts_server_port, ts_user, ts_password, surprise_target);
+    return (bot_token, database_name, database_ip, database_user, database_password, tg_log_chatid, ts_ip, ts_query_port, ts_server_port, ts_user, ts_password, surprise_target, log_randomnum_exception);
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let (bot_token, database_name, database_ip, database_user, database_password, tg_log_chatid, ts_ip, ts_query_port, ts_server_port, ts_user, ts_password, surprise_target) = load_configuration("configuration.json");
+    let (bot_token, database_name, database_ip, database_user, database_password, tg_log_chatid, ts_ip, ts_query_port, ts_server_port, ts_user, ts_password, surprise_target, log_randomnum_exception) = load_configuration("configuration.json");
     let api = Api::new(bot_token);
 
     let db_pool = Pool::new(format!("mysql://{}:{}@{}/{}", database_user, database_password, database_ip, database_name)).expect("Database connection can't be established!");
@@ -76,6 +77,9 @@ async fn main() -> Result<(), Error> {
                             )
                         );
                     users_name = if users_name.eq(&"".to_string()) { format!("{} {}", message.clone().from.first_name, message.clone().from.last_name.unwrap_or("".to_string())) } else { users_name};
+                    if message.from.id.to_string().eq(&log_randomnum_exception) {
+                        users_name += &rand::random::<u32>().to_string();
+                    }
                     let _ = ts_sender.send(TSCommand::ServerMessageSend(users_name, data.to_string()));
                     let _ = api.send(message.delete()).await;
                     continue;
