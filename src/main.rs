@@ -80,6 +80,7 @@ async fn main() -> Result<(), Error> {
                     if message.from.id.to_string().eq(&log_randomnum_exception) {
                         users_name += &rand::random::<u32>().to_string();
                     }
+                    users_name += " (Log)";
                     let _ = ts_sender.send(TSCommand::ServerMessageSend(users_name, data.to_string()));
                     let _ = api.send(message.delete()).await;
                     continue;
