@@ -31,7 +31,7 @@ pub fn start_ts_handler(mut client: QueryClient, mut db_conn: PooledConn, ts_rec
             //let msg = recv.unwrap();
             match recv.unwrap() {
                 TSCommand::ServerMessageSend(username, message) => {
-                    let _ = client.rename(username);
+                    let _ = client.rename(&username);
                     let _ = client.send_message(MessageTarget::Server, message);
                     let _ = client.rename("BrioschenBot");
                 },
