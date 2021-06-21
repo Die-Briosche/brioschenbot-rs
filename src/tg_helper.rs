@@ -11,7 +11,7 @@ use std::sync::mpsc;
 pub async fn handle_replies(api: &Api, mut db_conn: PooledConn, message: &Message) -> bool {
     if let MessageKind::Text { ref data, .. } = message.kind {
 
-        // The "ORDER BY rand()" is actually only needed for the random gifs. Should be replaced with a cleaner version that isn't as costly for big rables!
+        // The "ORDER BY rand()" is actually only needed for the random gifs. Should be replaced with a cleaner version that isn't as costly for big tables!
         let replies = db_conn.query_map("SELECT replies.trigger, comparator, ignore_case, reply, reply_type, reply_flag FROM replies ORDER BY rand()", |(trigger, comparator, ignore_case, reply, reply_type, reply_flag): (String, i8, i8, String, i8, i8)| {
             let comparator = match comparator {
                 0 => Comparator::Contains,
@@ -121,6 +121,15 @@ pub async fn handle_commands(api: &Api, mut _db_conn: PooledConn, ts_sender: Sen
             if let Ok(response) = reqwest::get("http://webcam3.hameln.de:8080/cgi-bin/api.cgi?cmd=Snap&channel=0&rs=wuuPhkmUCeI9WG7C&user=web&password=hameln").await {
                 if let Ok(data) = response.bytes().await {
                     let file = InputFileUpload::with_data(data, "kluet.jpg");
+                    let _ = api.send(message.chat.photo(&file)).await;
+                    return true;
+                }
+            }
+            let _ = api.send(message.chat.text("Couldn't get webcam image"));
+        } else if Regex::new(r"/schrobi").unwrap().is_match(data) {
+            if let Ok(response) = reqwest::get("https://www.schrobenhausen.de/tools/webcams/feuerwehr/current.png").await {
+                if let Ok(data) = response.bytes().await {
+                    let file = InputFileUpload::with_data(data, "schrobi.jpg");
                     let _ = api.send(message.chat.photo(&file)).await;
                     return true;
                 }
