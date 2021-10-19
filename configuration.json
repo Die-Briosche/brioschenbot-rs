@@ -10,8 +10,8 @@
     "ts_query_port": "10011",
     "ts_server_port": 9987,
     "ts_user": "",
-    "ts_password": ""
+    "ts_password": "",
 
-    "surprise_target": ""
+    "surprise_target": "",
     "log_randomnum_exception": ""
 }
