@@ -67,6 +67,7 @@ async fn main() -> Result<(), Error> {
         if let UpdateKind::Message(message) = update.kind {
             if let MessageKind::Text { ref data, .. } = message.kind {
                 println!("{} {} in {}: {}", message.clone().from.first_name, message.clone().from.last_name.unwrap_or("".to_string()), message.clone().chat.id(), data);
+                db_helper::log_message(&mut db_pool.get_conn().unwrap(), message.clone());
                 if message.chat.id().to_string().eq(&tg_log_chatid) {
                     let mut users_name =
                         get_alias_from_telegram_id(

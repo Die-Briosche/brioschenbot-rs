@@ -1,5 +1,6 @@
 use mysql::*;
 use mysql::prelude::*;
+use telegram_bot::{Message, MessageText};
 
 pub fn get_alias_from_telegram_id(mut db_conn: PooledConn, t_id: &String, name: Option<(String, String, String)>) -> String {
     let aliasses = db_conn.query_map(format!("SELECT alias FROM users WHERE t_uid = {}", t_id), |alias: String| {     // Usually you wouldn't use format! for your query for SQL injection reasons
@@ -33,4 +34,14 @@ pub fn get_tsname_from_userid(db_conn: &mut PooledConn, id: &String) -> String {
         return tsnames[0].to_string();
     }
     String::new()
+}
+
+pub fn log_message(db_conn: &mut PooledConn, msg: Message) {
+    db_conn.exec_drop("INSERT INTO messages (userid, message, chatid, messageid, timestamp) VALUES (:userid, :message, :chatid, :messageid, :timestamp)", params!{
+        "userid" =>  i64::from(msg.from.id),
+        "message" => msg.text().unwrap_or("".to_string()),
+        "chatid" => i64::from(msg.chat.id()),
+        "messageid" => i64::from(msg.id),
+        "timestamp" => msg.date,
+    });
 }
