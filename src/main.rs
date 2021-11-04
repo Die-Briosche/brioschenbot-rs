@@ -3,7 +3,7 @@ mod reply;
 mod db_helper;
 mod ts_helper;
 
-use std::{fs, thread};
+use std::{env, thread};
 
 use futures::StreamExt;
 use telegram_bot::*;
@@ -12,36 +12,32 @@ use crate::tg_helper::{handle_replies, handle_commands};
 use ts3_query::QueryClient;
 use std::sync::mpsc;
 use std::sync::mpsc::{Sender, Receiver};
-use std::convert::TryFrom;
 use crate::db_helper::get_alias_from_telegram_id;
 use crate::ts_helper::{start_ts_handler, TSCommand};
 
-pub fn load_configuration(path: &str) -> (String, String, String, String, String, String, String, String, u16, String, String, String, String) {
-    let raw_conf = fs::read_to_string(path).expect("Could not read configuration file!");
-    let conf: serde_json::Value = serde_json::from_str(&raw_conf).expect("Configuration file is malformed");
+pub fn load_configuration() -> (String, String, String, String, String, String, String, String, u16, String, String, String, String) {
+    let bot_token = env::var("BOT_TOKEN").expect("No BOT_TOKEN environment variable!");
+    let database_name = env::var("DB_NAME").expect("No DB_NAME environment variable!");
+    let database_ip = env::var("DB_IP").expect("No DB_IP environment variable!");
+    let database_user = env::var("DB_USER").expect("No DB_USER environment variable!");
+    let database_password = env::var("DB_PASSWORD").expect("No DB_PASSWORD environment variable!");
+    let tg_log_chatid = env::var("TG_LOG_CHATID").expect("No TG_LOG_CHATID environment variable!");
 
-    let bot_token = conf["bot_token"].as_str().expect("Configuration file does not contain bot_token!").to_string();
-    let database_name = conf["database_name"].as_str().expect("Configuration file does not contain database_name!").to_string();
-    let database_ip = conf["database_ip"].as_str().expect("Configuration file does not contain database_ip!").to_string();
-    let database_user = conf["database_user"].as_str().expect("Configuration file does not contain database_user!").to_string();
-    let database_password = conf["database_password"].as_str().expect("Configuration file does not contain database_password!").to_string();
-    let tg_log_chatid = conf["tg_log_chatid"].as_str().expect("Configuration file does not contain tg_log_chatid!").to_string();
+    let ts_ip = env::var("TS_IP").expect("No TS_IP environment variable!");
+    let ts_query_port = env::var("TS_QUERY_PORT").expect("No TS_QUERY_PORT environment variable!");
+    let ts_server_port : u16 = env::var("TS_SERVER_PORT").expect("No TS_SERVER_PORT environment variable!").parse().expect("TS_SERVER_PORT is not a valid port number!");
+    let ts_user = env::var("TS_USER").expect("No TS_USER environment variable!");
+    let ts_password = env::var("TS_PASSWORD").expect("No TS_PASSWORD environment variable!");
 
-    let ts_ip = conf["ts_ip"].as_str().expect("Configuration file does not contain ts_ip!").to_string();
-    let ts_query_port = conf["ts_query_port"].as_str().expect("Configuration file does not contain ts_query_port!").to_string();
-    let ts_server_port = u16::try_from(conf["ts_server_port"].as_u64().expect("Configuration file does not contain ts_server_port!")).expect("ts_server_port is not a valid port number!");
-    let ts_user = conf["ts_user"].as_str().expect("Configuration file does not contain ts_user!").to_string();
-    let ts_password = conf["ts_password"].as_str().expect("Configuration file does not contain ts_password!").to_string();
-
-    let surprise_target = conf["surprise_target"].as_str().expect("Configuration file does not contain surprise_target").to_string();
-    let log_randomnum_exception = conf["log_randomnum_exception"].as_str().expect("Configuration file does not contain log_randomnum_exception").to_string();
+    let surprise_target = env::var("SURPRISE_TARGET").expect("No SURPRISE_TARGET environment variable");
+    let log_randomnum_exception = env::var("LOG_RANDNUM_EXCEPTION").expect("No LOG_RANDNUM_EXCEPTION environment variable");
 
     return (bot_token, database_name, database_ip, database_user, database_password, tg_log_chatid, ts_ip, ts_query_port, ts_server_port, ts_user, ts_password, surprise_target, log_randomnum_exception);
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let (bot_token, database_name, database_ip, database_user, database_password, tg_log_chatid, ts_ip, ts_query_port, ts_server_port, ts_user, ts_password, surprise_target, log_randomnum_exception) = load_configuration("configuration.json");
+    let (bot_token, database_name, database_ip, database_user, database_password, tg_log_chatid, ts_ip, ts_query_port, ts_server_port, ts_user, ts_password, surprise_target, log_randomnum_exception) = load_configuration();
     let api = Api::new(bot_token);
 
     let db_pool = Pool::new(format!("mysql://{}:{}@{}/{}", database_user, database_password, database_ip, database_name)).expect("Database connection can't be established!");
