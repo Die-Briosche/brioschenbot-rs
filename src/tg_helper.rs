@@ -135,6 +135,24 @@ pub async fn handle_commands(api: &Api, mut _db_conn: PooledConn, ts_sender: Sen
                 }
             }
             let _ = api.send(message.chat.text("Couldn't get webcam image"));
+        } else if Regex::new(r"/neuburg").unwrap().is_match(data) {
+            if let Ok(response) = reqwest::get("https://webcam.neuburg-donau.de/FoscamCamera_00626EA7EB36/snap/current.php").await {
+                if let Ok(data) = response.bytes().await {
+                    let file = InputFileUpload::with_data(data, "neuburg.jpg");
+                    let _ = api.send(message.chat.photo(&file)).await;
+                    return true;
+                }
+            }
+            let _ = api.send(message.chat.text("Couldn't get webcam image"));
+        } else if Regex::new(r"/pfaffen").unwrap().is_match(data) {
+            if let Ok(response) = reqwest::get("https://video.pafunddu.de/webcam/paf_rathaus.jpg").await {
+                if let Ok(data) = response.bytes().await {
+                    let file = InputFileUpload::with_data(data, "pfaffen.jpg");
+                    let _ = api.send(message.chat.photo(&file)).await;
+                    return true;
+                }
+            }
+            let _ = api.send(message.chat.text("Couldn't get webcam image"));
         } else if Regex::new(r"/rand (\d*)").unwrap().is_match(data) {
             let re = Regex::new(r"/rand (\d*)").unwrap();
             if let Some(max) = re.captures(data).unwrap().get(1) {
