@@ -8,7 +8,7 @@ use std::{env, thread};
 use futures::StreamExt;
 use telegram_bot::*;
 use mysql::Pool;
-use crate::tg_helper::{handle_replies, handle_commands};
+use crate::tg_helper::{handle_replies, handle_commands, handle_tiktok};
 use ts3_query::QueryClient;
 use std::sync::mpsc;
 use std::sync::mpsc::{Sender, Receiver};
@@ -89,6 +89,8 @@ async fn main() -> Result<(), Error> {
             }
 
             if handle_commands(&api, db_pool.get_conn().unwrap(), ts_sender.clone(), &message).await {
+                continue;
+            } else if handle_tiktok(&api, &message).await {
                 continue;
             } else {
                 handle_replies(&api, db_pool.get_conn().unwrap(), &message).await;
