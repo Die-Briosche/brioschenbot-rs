@@ -1,4 +1,4 @@
-use telegram_bot::{Api, CanReplySendMessage, MessageKind, CanSendMessage, Message, InputFileUpload, CanSendPhoto, CanSendDocument, CanReplySendDocument, InputFileRef};
+use telegram_bot::{Api, CanReplySendMessage, MessageKind, CanSendMessage, Message, InputFileUpload, CanSendPhoto, CanSendDocument, CanReplySendDocument, InputFileRef, CanDeleteMessage};
 use mysql::PooledConn;
 use mysql::prelude::Queryable;
 use crate::reply::{Comparator, Reply, ReplyType};
@@ -66,6 +66,18 @@ pub async fn handle_replies(api: &Api, mut db_conn: PooledConn, message: &Messag
                 }
                 return true;
             }
+        }
+    }
+
+    false
+}
+
+pub async fn handle_tiktok(api: &Api, message: &Message) -> bool {
+    if let MessageKind::Text { ref data, .. } = message.kind {
+        let re = Regex::new(r"tiktok.com").unwrap();
+        if let Some(_caps) = re.captures(data) {
+            let _ = api.send(message.delete()).await;
+            return true;
         }
     }
 
